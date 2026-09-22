@@ -1,0 +1,6 @@
+.venv
+alerts
+__pycache__
+*.pdf
+.git
+*.md

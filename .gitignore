@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+alerts/
+*.pyc
+*.pdf
+users.db
+.session_secret
+.env
+.env.*

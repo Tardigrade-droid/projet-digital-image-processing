@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Surveillance CCTV</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <p class="wordmark"><span class="mark" aria-hidden="true"></span> Surveillance CCTV</p>
+    <div class="header-tools">
+      <p id="status" class="status idle">En attente</p>
+      <div class="account">
+        <span id="user-name"></span>
+        <button type="button" id="logout">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage">
+      <div class="stage-bar">
+        <p class="panel-title">Direct</p>
+        <section class="metrics" aria-live="polite">
+          <p><span>Objets</span> <strong id="objects">0</strong></p>
+          <p><span>Présence</span> <strong id="presence">0/12</strong></p>
+          <p><span>Zones</span> <strong id="zone-count">0</strong></p>
+        </section>
+      </div>
+      <div class="viewport" id="viewport">
+        <p id="placeholder">Choisissez une caméra, une vidéo ou une adresse de flux.</p>
+        <img id="annotated" alt="Vue surveillée" hidden>
+        <canvas id="overlay" hidden></canvas>
+      </div>
+      <div class="thumbs">
+        <figure>
+          <img id="background" alt="Fond appris" hidden>
+          <figcaption>Fond</figcaption>
+        </figure>
+        <figure>
+          <img id="diff" alt="Différence avec le fond" hidden>
+          <figcaption>Différence</figcaption>
+        </figure>
+        <figure>
+          <img id="mask" alt="Masque après ouverture" hidden>
+          <figcaption>Masque</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="panel-title">Source</p>
+        <div class="actions">
+          <button type="button" id="camera" class="primary">Caméra</button>
+          <label class="file">
+            Vidéo
+            <input id="file" type="file" accept="video/*">
+          </label>
+          <button type="button" id="demo">Démo</button>
+        </div>
+        <button type="button" id="flip" hidden>Caméra arrière</button>
+        <select id="devices" hidden aria-label="Choisir une caméra"></select>
+        <button type="button" id="stop" disabled>Arrêter</button>
+      </div>
+
+      <div class="panel stream-row">
+        <label for="stream-url">Flux distant</label>
+        <input id="stream-url" type="text" inputmode="url" spellcheck="false" placeholder="http://192.168.1.20:8080/video">
+        <button type="button" id="connect-stream">Connecter</button>
+        <p class="hint">Adresse joignable par le serveur : caméra IP ou application qui publie un flux.</p>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Détection</p>
+        <button type="button" id="relearn">Réapprendre le fond</button>
+        <label class="check"><input id="otsu" type="checkbox" checked> Seuil d'Otsu</label>
+        <label class="slider">
+          Seuil manuel <output id="threshold-value">25</output>
+          <input id="threshold" type="range" min="5" max="80" step="5" value="25">
+        </label>
+        <label class="check"><input id="median" type="checkbox"> Filtre médian</label>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Zone</p>
+        <p class="hint">Toute l'image est surveillée tant qu'aucune zone n'est fermée.</p>
+        <div class="actions">
+          <button type="button" id="draw">Dessiner</button>
+          <button type="button" id="close-zone" disabled>Fermer</button>
+          <button type="button" id="clear">Effacer</button>
+        </div>
+      </div>
+
+      <section class="panel alerts-panel">
+        <div class="panel-head">
+          <h2>Alertes</h2>
+          <a id="journal" href="/media/journal.csv">Journal</a>
+        </div>
+        <p id="alerts-empty">Aucune alerte.</p>
+        <ul id="alerts"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <video id="source" playsinline muted hidden></video>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

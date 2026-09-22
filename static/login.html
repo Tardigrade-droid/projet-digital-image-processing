@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion — Surveillance CCTV</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-body">
+  <main class="auth-layout">
+    <section class="auth-stage">
+      <p class="wordmark"><span class="mark" aria-hidden="true"></span> Surveillance CCTV</p>
+      <div class="auth-monitor" aria-hidden="true">
+        <div class="auth-monitor-bar">
+          <span>Direct</span>
+          <span>Hors ligne</span>
+        </div>
+        <div class="auth-frame"></div>
+      </div>
+      <div class="auth-copy">
+        <h1>Gardez un lieu sous surveillance.</h1>
+        <ul>
+          <li>Caméra de l'appareil, fichier vidéo ou flux distant.</li>
+          <li>Zones dessinées directement sur l'image.</li>
+          <li>Alertes horodatées, visibles uniquement par votre compte.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <div class="auth-switch" role="tablist">
+        <button type="button" id="show-login" class="primary">Connexion</button>
+        <button type="button" id="show-register">Créer un compte</button>
+      </div>
+      <p id="auth-error" class="auth-error" hidden></p>
+
+      <form id="login-form">
+        <label>E-mail
+          <input name="email" type="email" autocomplete="username" required>
+        </label>
+        <label>Mot de passe
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="primary">Se connecter</button>
+      </form>
+
+      <form id="register-form" hidden>
+        <label>Nom
+          <input name="name" type="text" autocomplete="name" required>
+        </label>
+        <label>E-mail
+          <input name="email" type="email" autocomplete="username" required>
+        </label>
+        <label>Mot de passe
+          <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <button type="submit" class="primary">Créer le compte</button>
+      </form>
+    </section>
+  </main>
+  <script src="/static/login.js" defer></script>
+</body>
+</html>

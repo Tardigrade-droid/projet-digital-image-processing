@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: surveillance-cctv
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: ALERTS_DIR
+        value: /var/data/alerts
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: cctv-data
+      mountPath: /var/data
+      sizeGB: 1

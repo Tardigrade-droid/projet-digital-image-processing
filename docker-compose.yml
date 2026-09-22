@@ -1,0 +1,31 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      ALERTS_DIR: /data/alerts
+    volumes:
+      - alerts:/data
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Indiquez DOMAIN, par exemple cctv.exemple.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+
+volumes:
+  alerts:
+  caddy-data:
+  caddy-config:
