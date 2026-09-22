@@ -1,0 +1,316 @@
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Une caméra de surveillance ne sert à rien si personne ne regarde l'image au moment où quelque chose change. Ce rapport décrit une application qui décide, image après image, si un lieu surveillé a été modifié, et qui conserve une preuve de cet événement.
+
+La décision repose sur la chaîne classique du traitement d'image : passage en niveaux de gris, filtrage, égalisation lorsque la scène est sombre, estimation d'un fond par moyenne glissante, différence absolue, seuillage, ouverture morphologique et extraction de contours. L'opérateur dessine les zones qui doivent déclencher une alerte. Un objet n'est retenu qu'après plusieurs images consécutives. Deux règles distinctes signalent un objectif masqué et une caméra déplacée. Une cascade de Haar cherche un visage seulement à l'intérieur des objets en mouvement.
+
+L'ensemble est livré comme une application web. Chaque utilisateur possède un compte. Ses photos d'alerte ne sont pas visibles par les autres. Le rapport présente le problème, les fondements, l'analyse des besoins, la conception --- dont les diagrammes de cas d'utilisation, de classes et de séquence ---, la réalisation, puis les limites observées.
+
+\vspace{0.8em}
+\noindent\textbf{Mots-clés :} surveillance vidéo, soustraction de fond, seuillage d'Otsu, contours, cascade de Haar, application web.
+
+\tableofcontents
+\listoffigures
+\clearpage
+
+\chapter{Introduction}
+
+\section{Contexte}
+
+Surveiller un lieu consiste à regarder un flux d'images et à remarquer ce qui n'était pas là l'instant d'avant. Un gardien le fait par l'attention. Un programme le fait en comparant l'image courante à une estimation de la scène vide. Le cours de \emph{Digital Images Processing} fournit justement les opérations qui rendent cette comparaison possible : niveaux de gris, réduction du bruit, amélioration de contraste, seuillage, morphologie et contours~\cite{gonzalez}.
+
+Le travail demandé n'est pas de reproduire un exercice sur une seule image. Un système de surveillance reçoit des images en continu, doit ignorer le bruit d'un capteur, mémoriser ce qui mérite une trace, et rester utilisable par une personne qui n'ouvre pas un terminal. Nous avons donc construit une application web : la caméra peut être celle de l'ordinateur ou du téléphone, un fichier vidéo, ou une adresse de flux. Les alertes restent attachées au compte qui les a produites.
+
+\section{Problématique}
+
+La question à laquelle répond le projet est la suivante. \emph{Comment détecter, dans un flux vidéo, un changement localisé du lieu surveillé, le distinguer d'un défaut de la caméra, et en laisser une trace consultable ensuite ?}
+
+Cette question se décompose en quatre difficultés. La première est temporelle : le fond de la scène n'est pas une photo prise une fois pour toutes, parce que la lumière change. La deuxième est spatiale : tout mouvement dans l'image n'est pas une intrusion ; l'opérateur doit pouvoir désigner la porte, et pas le couloir entier. La troisième est la robustesse : une image bruitée, un objectif couvert ou une caméra que l'on a bougée ne doivent pas être décrits comme un simple objet. La quatrième est l'usage : la preuve doit survivre à la fermeture de la page, et ne pas être lisible par un autre utilisateur.
+
+\section{Objectifs}
+
+L'objectif général est de livrer une application de surveillance fondée sur le traitement d'image, utilisable dans un navigateur. Les objectifs particuliers sont les suivants.
+
+\begin{enumerate}
+  \item Estimer un fond et en extraire les objets dont l'aire dépasse un seuil relatif à la taille de l'image.
+  \item Ne déclencher l'alerte de présence que dans les polygones dessinés par l'opérateur, ou sur toute l'image s'il n'en a dessiné aucun.
+  \item Exiger une présence de plusieurs images avant d'enregistrer l'événement.
+  \item Signaler séparément l'obscurcissement brutal et le déplacement de la caméra.
+  \item Indiquer un visage lorsqu'un motif frontal apparaît dans un objet en mouvement.
+  \item Conserver une photographie et une ligne de journal pour chaque alerte, isolées par compte.
+\end{enumerate}
+
+\section{Périmètre}
+
+Le système traite des images en couleurs réduites à une largeur d'au plus 640 pixels. Il ne reconnaît pas une personne : la cascade de Haar, retenue parce que le cours la place parmi les méthodes classiques~\cite{viola}, signale seulement un motif de visage frontal. Il n'y a pas de suivi d'identité d'une image à l'autre, ni de modèle de fond par mélange de gaussiennes~\cite{piccardi}. Le programme \texttt{main.py} sert à vérifier la chaîne dans une fenêtre OpenCV. Le produit destiné à l'utilisateur est l'application web.
+
+\section{Organisation du rapport}
+
+Le chapitre~\ref{chap:fondements} rappelle les opérations sur lesquelles la chaîne s'appuie. Le chapitre~\ref{chap:analyse} traduit le problème en besoins et en cas d'utilisation. Le chapitre~\ref{chap:conception} décrit l'architecture et les diagrammes UML. Le chapitre~\ref{chap:realisation} détaille les paramètres et le fonctionnement de l'application. Le chapitre~\ref{chap:discussion} discute ce qui a été vérifié et ce que la méthode ne peut pas garantir. Le dernier chapitre conclut.
+
+\chapter{Fondements}
+\label{chap:fondements}
+
+\section{De l'image au niveau de gris}
+
+Une image couleur porte trois canaux. Pour la détection de mouvement, la luminance suffit : un objet qui entre dans le champ change l'intensité, même si sa teinte est proche du mur. La conversion en niveaux de gris réduit le volume de calcul et rend les seuils comparables d'une caméra à l'autre. Le bruit du capteur, lui, produit de petites variations que l'on ne veut pas interpréter comme un contour. Un flou gaussien de taille $5\times 5$ atténue ces variations tout en conservant les frontières larges. Le filtre médian de même taille est proposé en alternative lorsque des impulsions isolées dominent le bruit : il remplace chaque pixel par la médiane de son voisinage, et il est moins sensible aux valeurs extrêmes~\cite{gonzalez}.
+
+\section{Contraste et égalisation}
+
+Une scène sombre comprime l'histogramme vers les faibles valeurs. La différence avec le fond devient alors petite partout, et le seuillage ne sépare plus rien. L'égalisation d'histogramme étale les niveaux occupés sur toute la dynamique. Elle n'est utile que lorsque l'image est réellement sombre. L'appliquer en permanence modifierait le fond à chaque variation d'éclairage et fabriquerait de faux objets. Le choix d'égaliser ou non est donc un état de la chaîne, pas un réglage laissé au hasard de chaque image. Nous y revenons au chapitre~\ref{chap:realisation}.
+
+\section{Soustraction de fond}
+
+La revue de Piccardi distingue plusieurs familles : la différence avec une image de référence, la moyenne ou la médiane temporelle, le filtre de Kalman, et les mélanges de gaussiennes~\cite{piccardi}. La moyenne glissante appartient à la deuxième famille. Elle met à jour une image de fond $B_t$ à partir de l'image courante $I_t$ :
+\begin{equation}
+  B_t = (1-\alpha)\,B_{t-1} + \alpha\,I_t .
+  \label{eq:fond}
+\end{equation}
+Le coefficient $\alpha$ règle la mémoire. S'il est proche de 1, le fond oublie vite et absorbe les objets. S'il est proche de 0, le fond reste figé et toute variation de lumière devient un objet. La mise à jour ne doit pas concerner les pixels déjà classés au premier plan, sinon l'objet s'imprime dans le fond pendant qu'on le détecte.
+
+Cette méthode suppose une scène à peu près fixe. Elle est adaptée à une pièce, un couloir ou une entrée. Elle l'est moins à un feuillage agité ou à une foule permanente. Nous l'avons retenue parce qu'elle est explicable, parce que ses paramètres tiennent en une équation, et parce qu'elle correspond à la chaîne du cours.
+
+\section{Seuillage}
+
+La différence absolue $|I_t - B_t|$ est une image d'intensités. Il faut la transformer en masque binaire. Le seuil manuel est simple, mais une même valeur ne convient pas à une scène contrastée et à une scène plate. La méthode d'Otsu choisit le seuil qui maximise la variance interclasse de l'histogramme, c'est-à-dire qui sépare le mieux les deux groupes de pixels~\cite{otsu}. Elle ne demande pas de connaître à l'avance la proportion du premier plan. Elle échoue lorsque l'histogramme n'a pas deux modes, par exemple si presque aucun pixel n'a changé et que le bruit forme un seul pic : le seuil calculé peut alors être trop bas. Un garde-fou est décrit au chapitre~\ref{chap:realisation}.
+
+\section{Morphologie et contours}
+
+Le masque binaire contient encore des pixels isolés. L'ouverture morphologique, une érosion suivie d'une dilatation avec un élément structurant $3\times 3$, les retire sans déplacer beaucoup les régions larges~\cite{gonzalez}. Les contours externes de ce masque nettoyé donnent les silhouettes candidates. L'aire du contour élimine ce qui reste trop petit pour être un objet. Le rectangle englobant sert à l'affichage. Le centroïde, calculé par les moments du contour, sert au test d'appartenance à une zone : un point résume l'objet mieux qu'un rectangle qui peut déborder de la zone dessinée.
+
+\section{Détection de visage par cascade de Haar}
+
+Viola et Jones détectent un visage en évaluant des contrastes entre rectangles clairs et sombres, grâce à une image intégrale, puis en enchaînant des classifieurs de plus en plus exigeants~\cite{viola}. Le fichier utilisé est la cascade frontale fournie avec OpenCV. C'est un classifieur AdaBoost déjà entraîné. Nous ne le réentraînons pas. Il ne calcule pas une transformée en ondelettes : les descripteurs s'inspirent des fonctions de Haar, mais la décision est une cascade de seuils.
+
+Lancée sur toute l'image, cette cascade s'accroche aux fenêtres, aux tableaux et aux cols de chemise. Nous la limitons donc aux régions qui bougent déjà. Le visage est une précision apportée à un objet, pas une deuxième détection indépendante.
+
+\chapter{Analyse des besoins}
+\label{chap:analyse}
+
+\section{Utilisateurs}
+
+Deux rôles suffisent. Le visiteur arrive sur la page de connexion. Il crée un compte ou il s'identifie. L'utilisateur authentifié surveille un lieu, règle la détection et consulte ses alertes. Il n'existe pas de rôle d'administrateur : chaque compte est le propriétaire de ses images, et aucun écran ne liste les autres comptes.
+
+\section{Besoins fonctionnels}
+
+Les besoins fonctionnels découlent directement de la problématique.
+
+\begin{enumerate}
+  \item Le visiteur crée un compte avec un nom, une adresse électronique et un mot de passe, puis il se connecte et se déconnecte.
+  \item L'utilisateur choisit une source : la caméra de l'appareil, un fichier vidéo, une démonstration intégrée, ou une adresse HTTP ou RTSP que le serveur peut joindre.
+  \item Il voit en même temps l'image annotée, le fond estimé, la différence et le masque, afin de comprendre pourquoi une alerte est née.
+  \item Il dessine, ferme et efface des zones polygonales.
+  \item Il réapprend le fond, choisit Otsu ou un seuil manuel, et active le filtre médian.
+  \item Le système enregistre une alerte de mouvement, de visage, d'obscurcissement ou de déplacement, avec l'heure et la photographie.
+  \item L'utilisateur consulte les dernières alertes et télécharge le journal.
+\end{enumerate}
+
+\section{Besoins non fonctionnels}
+
+L'application doit s'ouvrir dans un navigateur d'ordinateur et de téléphone, sans installation. Le traitement d'une image doit rester assez court pour un flux interactif : d'où la limite de largeur à 640 pixels. Les mots de passe ne sont pas stockés en clair. Une photographie n'est servie qu'au compte qui l'a produite. Les comptes et les fichiers doivent survivre à un redéploiement, ce qui impose un disque persistant. Une caméra dont l'adresse est privée n'est joignable que si le serveur se trouve sur le même réseau ; la caméra du téléphone, filmée par le navigateur, ne dépend pas de cette contrainte dès que le site est servi en HTTPS.
+
+\section{Cas d'utilisation}
+
+La figure~\ref{fig:usecase} résume les échanges entre les acteurs et le système. L'inscription et la connexion sont les seules actions du visiteur. Toutes les actions de surveillance supposent une session ouverte : le diagramme ne répète pas cette précondition sur chaque cas, elle est portée par l'acteur Utilisateur, qui n'existe qu'après authentification.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.78\linewidth]{diagrammes/cas-utilisation.pdf}
+\caption{Cas d'utilisation. Le visiteur n'accède qu'à l'identité du compte. L'utilisateur authentifié conduit la surveillance.}
+\label{fig:usecase}
+\end{figure}
+
+\section{Scénario nominal d'une alerte}
+
+Le scénario qui justifie le système est le suivant. L'utilisateur se connecte, démarre la caméra et laisse passer les images d'apprentissage. Il dessine un polygone autour de la porte et le ferme. Une personne entre dans ce polygone et y reste. Au bout de la persistance exigée, le système affiche l'état d'alerte, encadre l'objet, enregistre une photographie et ajoute une ligne au journal. Si, dans la même boîte, la cascade reconnaît un visage frontal, une seconde trace de type visage peut être produite. L'utilisateur retrouve la vignette après avoir arrêté la source, et un autre compte qui demanderait le même fichier reçoit une absence de ressource.
+
+\chapter{Conception}
+\label{chap:conception}
+
+\section{Architecture}
+
+L'application sépare trois responsabilités. Le navigateur capture l'image, dessine les zones dans les coordonnées de l'image, et affiche ce que le serveur renvoie. Le serveur web authentifie le compte, reçoit les images et les commandes, et sert les fichiers d'alerte. Le cœur de traitement ne connaît ni HTTP ni le navigateur : il reçoit une matrice et rend un résultat. Cette coupure permet de vérifier la chaîne sans ouvrir le site, par le programme de fenêtre OpenCV, et de remplacer plus tard la façon dont les images arrivent sans réécrire la détection.
+
+Deux canaux relient le navigateur au serveur. Les pages et les comptes passent par des requêtes ordinaires. Le flux d'images passe par une socket web, afin de ne pas reconstruire une requête complète à chaque trame. Le serveur peut aussi ouvrir lui-même une adresse de caméra, lorsque cette adresse est joignable depuis la machine qui héberge l'application.
+
+\section{Modèle de classes}
+
+La figure~\ref{fig:classes} montre les classes qui portent la surveillance d'une session. \texttt{MonitorSession} est la façade appelée par le serveur. Elle possède son pipeline, ses zones et son journal. Le détecteur de visages est partagé entre les sessions : il ne conserve pas d'état d'une image à l'autre, et le fichier de cascade est seulement lu. Le pipeline et le journal, au contraire, sont propres au compte, sinon les fonds et les photos se mélangeraient.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{diagrammes/classes.pdf}
+\caption{Classes de la session de surveillance. La session possède un pipeline, un éditeur de zones et un journal. Le détecteur de visages est partagé.}
+\label{fig:classes}
+\end{figure}
+
+\texttt{MovingObject} et \texttt{FrameResult} ne sont pas des services. Ce sont les valeurs produites par une image : la boîte, le centroïde, le fait d'être dans une zone, le fait de porter un visage, et les quatre images intermédiaires que l'interface affiche. Les comptes utilisateurs ne figurent pas sur ce diagramme. Ils sont une entité persistante, décrite à la section~\ref{sec:donnees}, et non un objet du traitement d'image.
+
+\section{Traitement d'une image}
+
+La figure~\ref{fig:sequence} suit une image depuis le navigateur jusqu'au journal. Le serveur décode le JPEG, puis la session limite la largeur et appelle le pipeline. Les centroïdes sont ensuite testés contre les polygones. La cascade n'est appelée que si l'apprentissage est terminé et qu'aucun sabotage n'est en cours : pendant ces deux situations, les boîtes ne décrivent pas un objet du lieu. Si la persistance ou une règle de sabotage produit un événement, le journal écrit la photographie annotée. La réponse regroupée --- vue, fond, différence, masque, état, historique --- repart vers le navigateur.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\linewidth]{diagrammes/sequence.pdf}
+\caption{Séquence du traitement d'une image. L'enregistrement n'a lieu que si un événement nouveau est décidé.}
+\label{fig:sequence}
+\end{figure}
+
+\section{Déploiement}
+
+La figure~\ref{fig:deploy} sépare ce qui s'exécute dans le navigateur, ce qui s'exécute dans le conteneur, et ce qui doit rester sur un disque. Le conteneur est le même pour un essai local, pour Render et pour Railway. Seul le montage du répertoire de données change. Sans ce disque, une nouvelle publication du conteneur effacerait les comptes et les photographies.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.55\linewidth]{diagrammes/deploiement.pdf}
+\caption{Déploiement. Le traitement vit dans le conteneur. Les données survivent en dehors de lui.}
+\label{fig:deploy}
+\end{figure}
+
+\section{Données persistantes}
+\label{sec:donnees}
+
+Deux informations durent plus longtemps qu'une session de navigateur. Le compte est une ligne SQLite : identifiant, nom, adresse électronique unique, et condensat du mot de passe. Le condensat est obtenu par PBKDF2-HMAC-SHA256, avec un sel propre à chaque compte. Le cookie ne contient pas le mot de passe. Il contient l'identifiant et un code d'authentification calculé avec un secret de serveur. Présenter un identifiant sans ce code ne suffit pas.
+
+Le journal est un fichier CSV et un ensemble de JPEG, dans un dossier au nom de l'identifiant. Les colonnes sont l'horodatage, le type, la boîte englobante, l'aire et le nom du fichier. L'historique affiché ne reprend que les vingt derniers événements, mais les fichiers plus anciens restent sur le disque tant qu'on ne les efface pas.
+
+\chapter{Réalisation}
+\label{chap:realisation}
+
+\section{Paramètres de la chaîne}
+
+Les paramètres ne sont pas dispersés dans l'interface sans explication. Le tableau~\ref{tab:params} fixe ceux qui déterminent une décision. Les seuils ont été choisis pour qu'une personne dans une image de largeur 640 produise un contour, et pour qu'un obscurcissement ou un déplacement de caméra ne soit pas confondu avec cette personne.
+
+\begin{table}[ht]
+\centering
+\caption{Paramètres de décision.}
+\label{tab:params}
+\small
+\begin{tabular}{@{}llp{5.5cm}@{}}
+\toprule
+Paramètre & Valeur & Rôle \\
+\midrule
+Largeur maximale & 640 px & Borner le temps de calcul \\
+Flou & Gaussien ou médian $5\times 5$ & Réduire le bruit \\
+$\alpha$ d'apprentissage & 0{,}2 pendant 45 images & Construire le fond \\
+$\alpha$ ensuite & 0{,}02 hors premier plan & Suivre la lumière lente \\
+Égalisation & activée sous 70, retirée au-dessus de 110 & Ouvrir une scène sombre \\
+Seuil manuel & de 5 à 80, départ à 25 & Remplacer Otsu \\
+Ouverture & $3\times 3$, une itération & Retirer les pixels isolés \\
+Aire minimale & $\max(600,\ 0{,}0015\,HW)$ & Ignorer les débris \\
+Persistance & 12 images & Confirmer la présence \\
+Obscurcissement & $\mu<28$ et $\mu<0{,}45\,\mu_0$ & Objectif masqué \\
+Déplacement & plus de 60~\% des pixels, 8 images & Caméra bougée \\
+Cascade & échelle 1{,}1, 5 voisins, $30\times 30$ & Visage frontal \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Apprentissage et mise à jour du fond}
+
+À la première image, le fond est une copie de l'image courante. Pendant 45 images, l'équation~\eqref{eq:fond} est appliquée avec $\alpha = 0{,}2$ à tous les pixels, et aucun objet n'est déclaré. Cette phase évite d'alerter sur le fond encore instable. À la dernière image d'apprentissage, la luminance moyenne est mémorisée : elle servira de référence à l'obscurcissement.
+
+Ensuite, $\alpha$ vaut 0{,}02 seulement là où le masque est nul. Un pixel classé premier plan garde l'ancienne valeur du fond. Un objet qui s'arrête longtemps finit tout de même par entrer dans le fond, parce que le masque finit par s'éteindre lorsque la différence devient faible, ou parce que l'opérateur peut demander un réapprentissage. Changer de filtre, gaussien ou médian, réapprend aussi : les deux images filtrées ne sont pas comparables pixel à pixel.
+
+L'égalisation suit la luminance mesurée \emph{avant} toute modification. Elle s'active si la moyenne descend sous 70, et elle se retire si la moyenne dépasse 110. L'hystérésis évite d'osciller autour d'un seul seuil. Chaque bascule réapprend le fond. Un obscurcissement soudain n'active pas l'égalisation : si on l'activait, le noircissement serait compensé et la règle de sabotage ne verrait plus rien.
+
+\section{Du masque à l'objet}
+
+Après la différence absolue, Otsu ou le seuil manuel produit le masque. Si le plus grand écart de la différence est inférieur à 10, le masque est forcé à zéro. Ce garde-fou empêche Otsu de découper un histogramme de bruit en deux classes alors que la scène n'a pas bougé. L'ouverture $3\times 3$ suit. Les contours externes dont l'aire est inférieure au seuil du tableau~\ref{tab:params} sont rejetés. Le centroïde vient des moments ; si le moment d'ordre zéro est nul, le centre du rectangle le remplace.
+
+\section{Zones et persistance}
+
+Une zone est un polygone d'au moins trois sommets, exprimé dans les coordonnées de l'image affichée. Le test \texttt{pointPolygonTest} est appliqué au centroïde. Sans polygone fermé, tout centroïde est accepté : l'absence de zone signifie que le lieu entier est surveillé, et non qu'aucune alerte n'est possible.
+
+Un compteur augmente lorsqu'au moins un objet accepté est présent, et retombe à zéro sinon. L'alerte de mouvement n'est émise qu'à la douzième image consécutive, puis une seule fois tant que la présence continue. Le même verrou existe pour le visage et pour le sabotage. Sans lui, un objet immobile remplirait le journal à la cadence de la caméra.
+
+\section{Sabotage de la caméra}
+
+L'obscurcissement utilise la luminance brute. Soit $\mu$ la moyenne de l'image et $\mu_0$ la référence apprise. L'alerte part si $\mu_0 \ge 25$, si $\mu < 28$ et si $\mu < 0{,}45\,\mu_0$. La référence minimale évite de déclarer un sabotage alors que l'apprentissage s'est fait dans le noir. Le fond n'est pas mis à jour pendant l'événement.
+
+Le déplacement est mesuré sur la différence \emph{avant} l'ouverture. La part des pixels dont la différence dépasse 20 doit être supérieure à 60~\%, pendant 8 images. L'ouverture aurait effacé une grande partie de ce masque : sur une séquence de test où la caméra se déplaçait, le masque après ouverture ne couvrait plus qu'environ un tiers de l'image, alors que la différence brute en couvrait plus de la moitié. La règle porte donc sur la mesure d'avant nettoyage. Une personne, même grande, ne couvre pas 60~\% du champ ; une foule qui le remplirait peut en revanche être confondue avec une caméra déplacée. Cette limite est assumée et discutée au chapitre~\ref{chap:discussion}.
+
+\section{Visages}
+
+La cascade ne reçoit que les cinq plus grandes boîtes situées dans une zone. Chaque boîte est élargie de 20~\%, parce que le visage dépasse souvent le rectangle du mouvement. Un extrait de moins de 40 pixels de côté est ignoré. Les paramètres d'OpenCV sont un facteur d'échelle de 1{,}1, cinq voisins et une taille minimale de $30\times 30$. Le visage confirmé est dessiné en rouge. Le mouvement seul reste en orange.
+
+\section{Application web}
+
+La page de connexion reprend l'identité de l'établissement et conduit à la console. La console place l'image annotée au centre, les trois images intermédiaires dessous, et les commandes dans une colonne : source, flux distant, détection, zone, alertes. Le nom du compte et la déconnexion sont dans l'en-tête. L'état --- attente, apprentissage, alerte --- est lisible sans ouvrir le journal.
+
+Côté serveur, FastAPI sert les pages et la socket. Chaque session de surveillance est créée pour le compte dont le cookie a été vérifié. Les fichiers d'alerte sont lus par une route qui refuse le fichier si le cookie ne correspond pas au dossier. L'essai local écoute le port indiqué par la variable \texttt{PORT}, ou le port 8000.
+
+\section{Mise en production}
+
+Le conteneur Docker installe OpenCV sans interface graphique, copie le programme et les pages, et écrit ses données dans \texttt{DATA\_DIR}. Les fichiers \texttt{render.yaml} et \texttt{railway.toml} décrivent le même conteneur, un contrôle de santé sur \texttt{/api/health}, et l'emplacement du disque. Le secret de signature des cookies est une variable d'environnement, ou un fichier créé une fois sur le disque. Le changer déconnecte tous les comptes, ce qui est le comportement attendu d'une rotation de clé.
+
+Une offre qui s'endort et qui ne monte pas de disque ne convient pas : elle perdrait les comptes au premier arrêt. Le dépôt Git qui accompagne le projet exclut les photographies, la base des comptes, le secret et le document du cours.
+
+\chapter{Discussion}
+\label{chap:discussion}
+
+\section{Ce qui a été vérifié}
+
+La chaîne a été exécutée sur une séquence synthétique, afin de contrôler l'alerte de mouvement sans dépendre d'une webcam, puis dans le navigateur avec la démonstration intégrée. L'état affiché, le compteur de présence et l'apparition d'une photographie dans la liste ont été observés ensemble. Une adresse de flux refusée par le schéma, et une adresse injoignable, produisent un message dans l'interface sans arrêter le serveur.
+
+Les comptes ont été vérifiés de bout en bout : création, mot de passe incorrect, déconnexion, puis accès. Une photographie créée par un premier compte répond pour ce compte et ne répond pas pour un second. Ces essais contrôlent le scénario nominal et l'isolation. Ils ne constituent pas une campagne sur une base d'images annotée.
+
+\section{Ce que l'on ne peut pas chiffrer}
+
+Il n'existe pas, dans le cadre de ce projet, de jeu d'images où chaque objet aurait été marqué à la main. Publier un taux de précision ou de rappel serait donc inventer une mesure. Les seuils du tableau~\ref{tab:params} sont des choix d'ingénierie, justifiés par le comportement observé sur les séquences disponibles, et non des optimums estimés sur un corpus.
+
+\section{Limites de la méthode}
+
+La moyenne glissante absorbe ce qui ne bouge plus. Une personne assise devient, au bout d'un temps, une partie du fond, et son départ peut alors ressembler à une apparition. Un changement d'éclairage lent est suivi par $\alpha = 0{,}02$ ; un changement brusque mais partiel, comme un nuage devant une fenêtre, peut créer des objets là où il n'y a personne.
+
+Otsu s'adapte au contraste de la différence, mais une scène presque uniforme le pousse vers un seuil inutile. Le plancher sur l'écart maximal limite ce cas, sans le supprimer lorsque une petite région bouge vraiment dans une image par ailleurs fixe.
+
+La règle de déplacement regarde une proportion de pixels. Elle est juste pour une caméra que l'on tourne. Elle est fausse pour une foule qui occupe le champ. L'obscurcissement, à l'inverse, ne voit qu'une chute globale : une main sur un coin de l'objectif ne suffit pas.
+
+La cascade frontale rate les profils, les visages trop petits et les visages masqués. Elle peut aussi accepter un contour rectangulaire très contrasté. Lors d'un essai avec une personne à contre-jour, le rectangle s'est posé sur la fenêtre plutôt que sur le visage. Augmenter le nombre de voisins réduirait cette erreur et en introduirait d'autres sur les vrais visages éloignés. Le système ne doit donc pas être présenté comme un contrôle d'identité.
+
+\section{Limites d'usage}
+
+Le téléphone filme correctement lorsque la page est ouverte sur le téléphone, en local ou en HTTPS. Une caméra IP d'un réseau domestique reste invisible pour un serveur hébergé ailleurs. Le disque persistant est une condition du service, pas un détail de configuration : sans lui, le produit oublie ses utilisateurs à chaque publication.
+
+\chapter{Conclusion}
+
+Le projet répond à la question posée au chapitre d'introduction par une chaîne dont chaque étape a un rôle vérifiable. Le fond est une moyenne glissante, le masque vient d'un seuil, les objets viennent des contours, la zone filtre ces objets, et la persistance empêche une image isolée de devenir une alerte. Le sabotage de la caméra est décidé par d'autres mesures que l'aire d'un contour, parce qu'il ne s'agit pas du même phénomène. La cascade de Haar n'ajoute un visage que là où le mouvement a déjà désigné une région.
+
+L'application web transforme cette chaîne en un outil. L'utilisateur voit les images intermédiaires, dessine les zones, et retrouve ensuite les photographies de son compte. La conception sépare le traitement, la session et le stockage, ce que les diagrammes de classes, de séquence et de déploiement rendent explicite.
+
+La suite utile ne consiste pas à remplacer la moyenne glissante par un modèle opaque. Elle consiste à mesurer les seuils de sabotage sur des séquences plus longues, filmées dans le lieu réel, et à montrer à l'opérateur le voisinage qui a fait accepter un visage, afin qu'il puisse juger l'alerte plutôt que la subir.
+
+\addcontentsline{toc}{chapter}{Bibliographie}
+\begin{thebibliography}{9}
+
+\bibitem{gonzalez}
+R.~C. Gonzalez et R.~E. Woods.
+\newblock \emph{Digital Image Processing}.
+\newblock Pearson.
+
+\bibitem{otsu}
+N.~Otsu.
+\newblock A threshold selection method from gray-level histograms.
+\newblock \emph{IEEE Transactions on Systems, Man, and Cybernetics}, 9(1):62--66, 1979.
+
+\bibitem{piccardi}
+M.~Piccardi.
+\newblock Background subtraction techniques: a review.
+\newblock In \emph{IEEE International Conference on Systems, Man and Cybernetics}, 2004.
+
+\bibitem{viola}
+P.~Viola et M.~Jones.
+\newblock Rapid object detection using a boosted cascade of simple features.
+\newblock In \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2001.
+
+\bibitem{opencv}
+G.~Bradski.
+\newblock The OpenCV Library.
+\newblock \emph{Dr. Dobb's Journal of Software Tools}, 2000.
+
+\end{thebibliography}
+
+\end{document}

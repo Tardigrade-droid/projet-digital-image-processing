@@ -1,0 +1,83 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 160
+skinparam classAttributeIconSize 0
+skinparam nodesep 45
+skinparam ranksep 50
+hide circle
+hide empty members
+skinparam ArrowColor #783214
+skinparam class {
+  BackgroundColor #FEF3EB
+  BorderColor #C45C26
+  HeaderBackgroundColor #FEF3EB
+}
+
+class MonitorSession {
+  pipeline
+  zones
+  faces
+  alerts
+  persist
+  --
+  processFrame()
+  applyControl()
+}
+
+together {
+  class MotionPipeline {
+    alpha
+    background
+    --
+    process()
+    relearn()
+  }
+
+  class ZoneEditor {
+    polygons
+    --
+    contains()
+    replacePolygons()
+  }
+
+  class FaceDetector {
+    classifier
+    --
+    detect()
+  }
+
+  class AlertLog {
+    directory
+    --
+    record()
+    history()
+  }
+}
+
+together {
+  class FrameResult {
+    gray
+    background
+    diff
+    mask
+    objects
+    tamper
+  }
+
+  class MovingObject {
+    boîte
+    aire
+    centroïde
+    inZone
+    hasFace
+  }
+}
+
+MonitorSession *-- MotionPipeline
+MonitorSession *-- ZoneEditor
+MonitorSession o-- FaceDetector
+MonitorSession *-- AlertLog
+MotionPipeline --> FrameResult
+MotionPipeline --> MovingObject
+FaceDetector --> MovingObject
+@enduml

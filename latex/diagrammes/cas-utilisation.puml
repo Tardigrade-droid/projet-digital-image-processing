@@ -1,0 +1,36 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 160
+skinparam ArrowColor #783214
+skinparam ActorBorderColor #C45C26
+skinparam ActorBackgroundColor #FEF3EB
+skinparam usecase {
+  BackgroundColor #FEF3EB
+  BorderColor #C45C26
+}
+skinparam rectangle {
+  BorderColor #C45C26
+}
+left to right direction
+
+actor Visiteur
+actor Utilisateur
+
+rectangle "Système de surveillance" {
+  usecase "S'inscrire" as UC1
+  usecase "Se connecter" as UC2
+  usecase "Se déconnecter" as UC3
+  usecase "Choisir une source" as UC4
+  usecase "Régler la détection" as UC5
+  usecase "Dessiner une zone" as UC6
+  usecase "Consulter les alertes" as UC7
+}
+
+Visiteur --> UC1
+Visiteur --> UC2
+Utilisateur --> UC3
+Utilisateur --> UC4
+Utilisateur --> UC5
+Utilisateur --> UC6
+Utilisateur --> UC7
+@enduml

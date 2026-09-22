@@ -1,0 +1,175 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tikz}
+
+\definecolor{primaryOrange}{RGB}{196, 92, 38}
+\definecolor{secondaryOrange}{RGB}{254, 243, 235}
+\definecolor{darkOrange}{RGB}{120, 50, 20}
+
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+\setbeamercolor{structure}{fg=primaryOrange}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\Etudiant}{MBUKU KUKIELE PERSEVERANCE}
+
+\title{Surveillance CCTV}
+\subtitle{Détection de mouvement par traitement d'image}
+\author[Mbuku Kukiele]{\Etudiant}
+\institute[Mapon]{Université Mapon}
+\date{2025--2026}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]
+  \centering
+  \vspace{0.15cm}
+  \includegraphics[width=1.7cm]{logo.png}\\[0.15cm]
+  {\small\bfseries UNIVERSITÉ MAPON}\\[0.08cm]
+  {\scriptsize FACULTÉ POLYTECHNIQUE --- Master 1 Génie Informatique}\\[0.28cm]
+  \begin{tikzpicture}
+    \draw[draw=primaryOrange, fill=secondaryOrange, rounded corners, line width=1pt]
+      (0,0) rectangle (11, 1.7);
+    \node[text width=10.4cm, align=center] at (5.5, 0.85) {
+      {\large\bfseries\color{darkOrange} Projet de traitement d'image}\\[0.12cm]
+      {\small Surveillance par caméra}
+    };
+  \end{tikzpicture}\\[0.28cm]
+  {\LARGE\bfseries\color{primaryOrange} Surveillance CCTV}\\[0.12cm]
+  {\small Détection de mouvement par traitement d'image}\\[0.35cm]
+  {\scriptsize\textbf{Rédigé par :} \textsc{\Etudiant}}\\[0.12cm]
+  {\scriptsize\textbf{Encadrement :} CT \textsc{Hervek Kabengele Kabukala}}\\[0.22cm]
+  {\scriptsize Année académique 2025--2026}
+\end{frame}
+
+\begin{frame}{De quoi s'agit-il}
+  Décider, sur un flux vidéo, si un lieu surveillé a changé, et garder une preuve.
+  \vspace{0.6em}
+  \begin{itemize}
+    \item La chaîne suit le cours : gris, flou, fond, seuil, ouverture, contours.
+    \item L'opérateur dessine les zones qui comptent.
+    \item Chaque alerte laisse une photo et une ligne de journal.
+    \item L'usage prévu est une page web, un compte par personne.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{La chaîne, image par image}
+  \begin{enumerate}
+    \item Niveaux de gris, puis flou gaussien $5\times 5$ (ou médian).
+    \item Égalisation d'histogramme si la scène est sombre.
+    \item Différence absolue avec le fond.
+    \item Seuil d'Otsu, ou seuil manuel.
+    \item Ouverture $3\times 3$.
+    \item Contours externes, aire, boîte, centroïde.
+  \end{enumerate}
+  \vspace{0.5em}
+  L'image traitée est limitée à 640 pixels de large.
+\end{frame}
+
+\begin{frame}{Le fond n'est pas une photo fixe}
+  Moyenne glissante :
+  \[
+    B_t = (1-\alpha)\,B_{t-1} + \alpha\,I_t
+  \]
+  \begin{itemize}
+    \item 45 images d'apprentissage, avec $\alpha = 0{,}2$.
+    \item Ensuite $\alpha = 0{,}02$, et seulement sur l'arrière-plan.
+    \item Un objet qui vient d'entrer ne met pas le fond à jour.
+    \item Un objet immobile longtemps finit par en faire partie.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Ce qui devient un objet}
+  \begin{itemize}
+    \item Otsu choisit le seuil sur la différence. Le seuil manuel va de 5 à 80.
+    \item L'ouverture retire les petits points avant les contours.
+    \item Aire minimale : $\max(600,\ 0{,}0015 \times H \times W)$.
+    \item Le centroïde vient des moments du contour.
+  \end{itemize}
+  \vspace{0.6em}
+  Cadre orange : mouvement. Cadre rouge : visage dans cette boîte.
+\end{frame}
+
+\begin{frame}{Zones et persistance}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Zone}\\[0.4em]
+      Polygone dessiné sur l'image.\\
+      Le centroïde est testé avec \texttt{pointPolygonTest}.\\[0.4em]
+      Aucun polygone : toute l'image est surveillée.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Persistance}\\[0.4em]
+      L'objet doit rester 12 images de suite.\\
+      Une image bruitée ne crée pas d'alerte.\\
+      Une seule alerte tant que la présence continue.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quand la caméra elle-même est en cause}
+  \textbf{Objectif masqué.} La moyenne de luminance, avant égalisation, tombe sous 28 et sous 45~\% de la référence apprise.
+  \vspace{0.7em}
+  \textbf{Caméra déplacée.} Plus de 60~\% des pixels diffèrent de plus de 20, pendant 8 images. La mesure est faite avant l'ouverture, sinon le masque nettoyé sous-estime le changement.
+  \vspace{0.7em}
+  Pendant ces deux cas, le fond n'absorbe pas l'image anormale.
+\end{frame}
+
+\begin{frame}{Visages}
+  Cascade frontale de Viola--Jones, classifieur AdaBoost déjà fourni par OpenCV. Il n'est pas réentraîné.
+  \vspace{0.5em}
+  \begin{itemize}
+    \item Seulement les boîtes en mouvement, dans une zone, cinq au plus.
+    \item Marge de 20~\% autour de la boîte.
+    \item Échelle 1{,}1, cinq voisins, taille minimale $30\times 30$.
+  \end{itemize}
+  \vspace{0.4em}
+  Limite observée : un contour très contrasté, par exemple une fenêtre en contre-jour, peut être marqué à tort.
+\end{frame}
+
+\begin{frame}{Ce que l'utilisateur voit}
+  \begin{itemize}
+    \item Page de connexion, puis la console : direct, fond, différence, masque.
+    \item Source : caméra de l'appareil, fichier vidéo, démonstration, ou adresse HTTP/RTSP.
+    \item Réglages : réapprendre le fond, Otsu, seuil, filtre médian, zones.
+    \item Journal CSV et vignettes des dernières alertes.
+  \end{itemize}
+  \vspace{0.4em}
+  Le serveur FastAPI reçoit les images par WebSocket et renvoie la vue annotée.
+\end{frame}
+
+\begin{frame}{Comptes et déploiement}
+  \begin{itemize}
+    \item Mot de passe stocké par PBKDF2. Cookie signé, pas le mot de passe.
+    \item Les photos d'un compte ne sont lisibles que par ce compte.
+    \item Le même conteneur Docker cible Render et Railway.
+    \item Comptes et photos : disque persistant (\texttt{DATA\_DIR}).
+  \end{itemize}
+  \vspace{0.5em}
+  Une instance sans disque perd le journal à chaque redéploiement. Une caméra en \texttt{192.168.\ldots} n'est joignable que depuis le même réseau que le serveur.
+\end{frame}
+
+\begin{frame}{Limites}
+  \begin{itemize}
+    \item Le fond glissant absorbe ce qui ne bouge plus.
+    \item Une foule qui remplit l'image peut ressembler à un déplacement de caméra.
+    \item La cascade frontale rate les profils et peut s'accrocher au décor.
+    \item Elle ne reconnaît pas une personne : elle signale un motif de visage.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusion}
+  Le mouvement, la zone et la persistance suffisent à produire une alerte exploitable, avec une photo et un horodatage.
+  \vspace{0.8em}
+  La chaîne reste lisible : chaque seuil a un rôle, et l'opérateur peut réapprendre le fond ou changer le seuil sans relancer un apprentissage lourd.
+  \vspace{1.2em}
+  \centering
+  Merci.
+\end{frame}
+
+\end{document}

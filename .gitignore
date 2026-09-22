@@ -3,6 +3,17 @@ __pycache__/
 alerts/
 *.pyc
 *.pdf
+*.aux
+*.log
+*.lof
+*.lot
+*.toc
+*.out
+*.nav
+*.snm
+*.fls
+*.fdb_latexmk
+*.synctex.gz
 users.db
 .session_secret
 .env

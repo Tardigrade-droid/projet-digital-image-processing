@@ -1,0 +1,83 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{setspace}
+\usepackage{tikz}
+\usepackage{hyperref}
+
+\definecolor{primaryOrange}{RGB}{196, 92, 38}
+\definecolor{secondaryOrange}{RGB}{254, 243, 235}
+\definecolor{darkOrange}{RGB}{120, 50, 20}
+
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm, headheight=15pt}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black,
+  pdftitle={Surveillance CCTV --- Traitement d'image},
+  pdfauthor={MBUKU KUKIELE PERSEVERANCE}
+}
+
+\newcommand{\Etudiant}{MBUKU KUKIELE PERSEVERANCE}
+
+\title{Surveillance CCTV par traitement d'image}
+\author{\Etudiant}
+\date{2025--2026}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textsc{Mapon} --- Surveillance CCTV}
+\fancyhead[R]{\thepage/\pageref{LastPage}}
+\fancyfoot[C]{\small Université Mapon --- Master 1 GI --- 2025--2026}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyhead[L]{\textsc{Mapon} --- Surveillance CCTV}
+  \fancyhead[R]{\thepage/\pageref{LastPage}}
+  \fancyfoot[C]{\small Université Mapon --- Master 1 GI --- 2025--2026}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
+
+\onehalfspacing
+\setlist[itemize,enumerate]{leftmargin=*, itemsep=0.25em, topsep=0.35em}
+
+\begin{document}
+
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \includegraphics[width=3.2cm]{logo.png}\\[0.6cm]
+  {\large\bfseries UNIVERSITÉ MAPON}\\[0.3cm]
+  {\large\bfseries FACULTÉ POLYTECHNIQUE}\\[0.3cm]
+  {\large Master 1 Génie Informatique}\\[0.25cm]
+  {\normalsize Digital Images Processing}\\[1.1cm]
+  \begin{tikzpicture}
+    \draw[draw=primaryOrange, fill=secondaryOrange, rounded corners, line width=1.5pt]
+      (0,0) rectangle (14, 3.2);
+    \node[text width=13cm, align=center] at (7, 1.6) {
+      {\Large\bfseries\color{darkOrange} Projet de traitement d'image}\\[0.35cm]
+      {\large Surveillance par caméra}
+    };
+  \end{tikzpicture}\\[0.9cm]
+  {\Huge\bfseries\color{primaryOrange}{Surveillance CCTV}}\\[0.4cm]
+  {\large Détection de mouvement par traitement d'image}\\[0.25cm]
+  {\normalsize Application web}\\[1.5cm]
+  \textbf{Rédigé par :} \textsc{\Etudiant}\\[0.45cm]
+  \textbf{Encadrement :} CT \textsc{Hervek Kabengele Kabukala}\\[1.6cm]
+  {\large Année académique 2025--2026}
+\end{titlepage}
+
+\input{corps}

@@ -1,0 +1,32 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 160
+hide footbox
+skinparam ArrowColor #783214
+skinparam ActorBorderColor #C45C26
+skinparam ActorBackgroundColor #FEF3EB
+skinparam participant {
+  BackgroundColor #FEF3EB
+  BorderColor #C45C26
+}
+skinparam sequence {
+  LifeLineBorderColor #C45C26
+  GroupBorderColor #C45C26
+  GroupBackgroundColor #FEF3EB
+}
+
+actor Navigateur
+participant Session
+participant Pipeline
+participant Journal
+
+Navigateur -> Session : JPEG
+Session -> Pipeline : process(image)
+Pipeline --> Session : résultat
+Session -> Session : zones et visages
+opt événement nouveau
+  Session -> Journal : enregistrer(photo)
+  Journal --> Session : fichier
+end
+Session --> Navigateur : vue et historique
+@enduml

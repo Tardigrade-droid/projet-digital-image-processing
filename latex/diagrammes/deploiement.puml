@@ -1,0 +1,32 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 160
+skinparam ArrowColor #783214
+skinparam node {
+  BackgroundColor white
+  BorderColor #C45C26
+}
+skinparam database {
+  BackgroundColor white
+  BorderColor #C45C26
+}
+skinparam component {
+  BackgroundColor #FEF3EB
+  BorderColor #C45C26
+}
+
+node "Navigateur" as nav {
+  [Caméra, zones, affichage]
+}
+
+node "Conteneur" as app {
+  [FastAPI et traitement]
+}
+
+database "Disque persistant" as disk {
+  [Comptes et alertes]
+}
+
+nav --> app : HTTPS, socket
+app --> disk : DATA_DIR
+@enduml
