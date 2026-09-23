@@ -4,9 +4,8 @@ Les descripteurs sont des features de Haar : des rectangles clairs et sombres
 évalués sur une image intégrale. Ils sont inspirés des ondelettes de Haar,
 mais ce module ne calcule pas une transformée en ondelettes.
 
-Le fichier XML est un classifieur AdaBoost déjà entraîné. Ce n'est pas un
-réseau de neurones. Le cours (slide 276) le range dans la colonne
-« sans deep learning ». On ne ré-entraîne pas le modèle.
+Le fichier XML est la cascade frontale déjà fournie par OpenCV.
+On ne ré-entraîne pas le modèle.
 
 La cascade ne tourne que sur les boîtes en mouvement situées dans une zone.
 """

@@ -6,6 +6,7 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{tikz}
+\usepackage{xurl}
 
 \definecolor{primaryOrange}{RGB}{196, 92, 38}
 \definecolor{secondaryOrange}{RGB}{254, 243, 235}
@@ -121,7 +122,7 @@
 \end{frame}
 
 \begin{frame}{Visages}
-  Cascade frontale de Viola--Jones, classifieur AdaBoost déjà fourni par OpenCV. Il n'est pas réentraîné.
+  Nous utilisons la cascade de Haar d'OpenCV : \texttt{haarcascade\_frontalface\_default.xml}. Elle n'est pas réentraînée.
   \vspace{0.5em}
   \begin{itemize}
     \item Seulement les boîtes en mouvement, dans une zone, cinq au plus.
@@ -130,6 +131,28 @@
   \end{itemize}
   \vspace{0.4em}
   Limite observée : un contour très contrasté, par exemple une fenêtre en contre-jour, peut être marqué à tort.
+\end{frame}
+
+\begin{frame}{Alertes enregistrées}
+  \begin{columns}[c]
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{figures/mouvement.jpg}\\[0.25em]
+      {\scriptsize Mouvement}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{figures/visage.jpg}\\[0.25em]
+      {\scriptsize Visage}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{figures/deplacement.jpg}\\[0.25em]
+      {\scriptsize Caméra déplacée}
+    \end{column}
+  \end{columns}
+  \vspace{0.45em}
+  {\footnotesize Cadre orange : mouvement. Cadre rouge : visage. À droite, la caméra a bougé : aucun objet n'est compté.}
 \end{frame}
 
 \begin{frame}{Ce que l'utilisateur voit}
@@ -143,11 +166,20 @@
   Le serveur FastAPI reçoit les images par WebSocket et renvoie la vue annotée.
 \end{frame}
 
+\begin{frame}{Page publiée}
+  \centering
+  \includegraphics[width=0.78\textwidth,height=0.72\textheight,keepaspectratio]{figures/connexion.png}\\[0.35em]
+  {\small \url{https://cctv-6n8v.onrender.com/}}\\[0.15em]
+  {\scriptsize Code source : \url{https://github.com/Tardigrade-droid/projet-digital-image-processing}}
+\end{frame}
+
 \begin{frame}{Comptes et déploiement}
   \begin{itemize}
     \item Mot de passe stocké par PBKDF2. Cookie signé, pas le mot de passe.
     \item Les photos d'un compte ne sont lisibles que par ce compte.
     \item Le même conteneur Docker cible Render et Railway.
+    \item Instance en ligne : \url{https://cctv-6n8v.onrender.com/}.
+    \item Code source : \url{https://github.com/Tardigrade-droid/projet-digital-image-processing}.
     \item Comptes et photos : disque persistant (\texttt{DATA\_DIR}).
   \end{itemize}
   \vspace{0.5em}
@@ -169,6 +201,8 @@
   La chaîne reste lisible : chaque seuil a un rôle, et l'opérateur peut réapprendre le fond ou changer le seuil sans relancer un apprentissage lourd.
   \vspace{1.2em}
   \centering
+  \url{https://cctv-6n8v.onrender.com/}\\[0.35em]
+  {\scriptsize \url{https://github.com/Tardigrade-droid/projet-digital-image-processing}}\\[0.45em]
   Merci.
 \end{frame}
 

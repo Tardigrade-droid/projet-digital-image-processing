@@ -81,7 +81,7 @@ Le masque binaire contient encore des pixels isolés. L'ouverture morphologique,
 
 \section{Détection de visage par cascade de Haar}
 
-Viola et Jones détectent un visage en évaluant des contrastes entre rectangles clairs et sombres, grâce à une image intégrale, puis en enchaînant des classifieurs de plus en plus exigeants~\cite{viola}. Le fichier utilisé est la cascade frontale fournie avec OpenCV. C'est un classifieur AdaBoost déjà entraîné. Nous ne le réentraînons pas. Il ne calcule pas une transformée en ondelettes : les descripteurs s'inspirent des fonctions de Haar, mais la décision est une cascade de seuils.
+Pour les visages, nous utilisons la cascade de Haar d'OpenCV, le fichier \texttt{haarcascade\_frontalface\_default.xml}. OpenCV l'applique avec \texttt{CascadeClassifier}. Nous ne réentraînons pas ce fichier. La cascade compare des rectangles clairs et sombres sur une image intégrale, puis enchaîne ces tests du plus rapide au plus exigeant~\cite{viola}. Elle ne calcule pas une transformée en ondelettes.
 
 Lancée sur toute l'image, cette cascade s'accroche aux fenêtres, aux tableaux et aux cols de chemise. Nous la limitons donc aux régions qui bougent déjà. Le visage est une précision apportée à un objet, pas une deuxième détection indépendante.
 
@@ -234,26 +234,54 @@ Le déplacement est mesuré sur la différence \emph{avant} l'ouverture. La part
 
 \section{Visages}
 
-La cascade ne reçoit que les cinq plus grandes boîtes situées dans une zone. Chaque boîte est élargie de 20~\%, parce que le visage dépasse souvent le rectangle du mouvement. Un extrait de moins de 40 pixels de côté est ignoré. Les paramètres d'OpenCV sont un facteur d'échelle de 1{,}1, cinq voisins et une taille minimale de $30\times 30$. Le visage confirmé est dessiné en rouge. Le mouvement seul reste en orange.
+La cascade de Haar d'OpenCV ne reçoit que les cinq plus grandes boîtes situées dans une zone. Chaque boîte est élargie de 20~\%, parce que le visage dépasse souvent le rectangle du mouvement. Un extrait de moins de 40 pixels de côté est ignoré. Les paramètres d'OpenCV sont un facteur d'échelle de 1{,}1, cinq voisins et une taille minimale de $30\times 30$. Le visage confirmé est dessiné en rouge. Le mouvement seul reste en orange.
 
 \section{Application web}
 
-La page de connexion reprend l'identité de l'établissement et conduit à la console. La console place l'image annotée au centre, les trois images intermédiaires dessous, et les commandes dans une colonne : source, flux distant, détection, zone, alertes. Le nom du compte et la déconnexion sont dans l'en-tête. L'état --- attente, apprentissage, alerte --- est lisible sans ouvrir le journal.
+La page de connexion reprend l'identité de l'établissement et conduit à la console. La console place l'image annotée au centre, les trois images intermédiaires dessous, et les commandes dans une colonne : source, flux distant, détection, zone, alertes. Le nom du compte et la déconnexion sont dans l'en-tête. L'état --- attente, apprentissage, alerte --- est lisible sans ouvrir le journal. La figure~\ref{fig:connexion} montre cette page telle qu'elle est servie en ligne.
 
 Côté serveur, FastAPI sert les pages et la socket. Chaque session de surveillance est créée pour le compte dont le cookie a été vérifié. Les fichiers d'alerte sont lus par une route qui refuse le fichier si le cookie ne correspond pas au dossier. L'essai local écoute le port indiqué par la variable \texttt{PORT}, ou le port 8000.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/connexion.png}
+\caption{Page de connexion de l'application publiée.}
+\label{fig:connexion}
+\end{figure}
+
 \section{Mise en production}
 
-Le conteneur Docker installe OpenCV sans interface graphique, copie le programme et les pages, et écrit ses données dans \texttt{DATA\_DIR}. Les fichiers \texttt{render.yaml} et \texttt{railway.toml} décrivent le même conteneur, un contrôle de santé sur \texttt{/api/health}, et l'emplacement du disque. Le secret de signature des cookies est une variable d'environnement, ou un fichier créé une fois sur le disque. Le changer déconnecte tous les comptes, ce qui est le comportement attendu d'une rotation de clé.
+Le conteneur Docker installe OpenCV sans interface graphique, copie le programme et les pages, et écrit ses données dans \texttt{DATA\_DIR}. Les fichiers \texttt{render.yaml} et \texttt{railway.toml} décrivent le même conteneur, un contrôle de santé sur \texttt{/api/health}, et l'emplacement du disque. Le secret de signature des cookies est une variable d'environnement, ou un fichier créé une fois sur le disque. Le changer déconnecte tous les comptes, ce qui est le comportement attendu d'une rotation de clé. L'instance en service est accessible à l'adresse \url{https://cctv-6n8v.onrender.com/}. Le code source est publié dans le dépôt \url{https://github.com/Tardigrade-droid/projet-digital-image-processing}.
 
-Une offre qui s'endort et qui ne monte pas de disque ne convient pas : elle perdrait les comptes au premier arrêt. Le dépôt Git qui accompagne le projet exclut les photographies, la base des comptes, le secret et le document du cours.
+Une offre qui s'endort et qui ne monte pas de disque ne convient pas : elle perdrait les comptes au premier arrêt. Ce dépôt exclut les photographies, la base des comptes, le secret et le document du cours.
 
 \chapter{Discussion}
 \label{chap:discussion}
 
 \section{Ce qui a été vérifié}
 
-La chaîne a été exécutée sur une séquence synthétique, afin de contrôler l'alerte de mouvement sans dépendre d'une webcam, puis dans le navigateur avec la démonstration intégrée. L'état affiché, le compteur de présence et l'apparition d'une photographie dans la liste ont été observés ensemble. Une adresse de flux refusée par le schéma, et une adresse injoignable, produisent un message dans l'interface sans arrêter le serveur.
+La chaîne a été exécutée sur une séquence synthétique, afin de contrôler l'alerte de mouvement sans dépendre d'une webcam, puis dans le navigateur avec la démonstration intégrée. L'état affiché, le compteur de présence et l'apparition d'une photographie dans la liste ont été observés ensemble. Une adresse de flux refusée par le schéma, et une adresse injoignable, produisent un message dans l'interface sans arrêter le serveur. La figure~\ref{fig:alertes} reprend trois photographies écrites par le journal lors de ces essais : un mouvement confirmé après douze images, une alerte de visage, et un déplacement de caméra.
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}[t]{0.32\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/mouvement.jpg}\\[0.35em]
+  {\small Mouvement}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.32\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/visage.jpg}\\[0.35em]
+  {\small Visage}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.32\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/deplacement.jpg}\\[0.35em]
+  {\small Caméra déplacée}
+\end{minipage}
+\caption{Photographies d'alerte produites par l'application. Les cadres orange entourent le mouvement. Sur l'alerte de visage, le cadre rouge s'est posé sur la fenêtre en contre-jour. Le déplacement de caméra ne déclare aucun objet.}
+\label{fig:alertes}
+\end{figure}
 
 Les comptes ont été vérifiés de bout en bout : création, mot de passe incorrect, déconnexion, puis accès. Une photographie créée par un premier compte répond pour ce compte et ne répond pas pour un second. Ces essais contrôlent le scénario nominal et l'isolation. Ils ne constituent pas une campagne sur une base d'images annotée.
 
@@ -269,7 +297,7 @@ Otsu s'adapte au contraste de la différence, mais une scène presque uniforme l
 
 La règle de déplacement regarde une proportion de pixels. Elle est juste pour une caméra que l'on tourne. Elle est fausse pour une foule qui occupe le champ. L'obscurcissement, à l'inverse, ne voit qu'une chute globale : une main sur un coin de l'objectif ne suffit pas.
 
-La cascade frontale rate les profils, les visages trop petits et les visages masqués. Elle peut aussi accepter un contour rectangulaire très contrasté. Lors d'un essai avec une personne à contre-jour, le rectangle s'est posé sur la fenêtre plutôt que sur le visage. Augmenter le nombre de voisins réduirait cette erreur et en introduirait d'autres sur les vrais visages éloignés. Le système ne doit donc pas être présenté comme un contrôle d'identité.
+La cascade frontale rate les profils, les visages trop petits et les visages masqués. Elle peut aussi accepter un contour rectangulaire très contrasté. Lors de l'essai à contre-jour de la figure~\ref{fig:alertes}, le rectangle s'est posé sur la fenêtre plutôt que sur le visage. Augmenter le nombre de voisins réduirait cette erreur et en introduirait d'autres sur les vrais visages éloignés. Le système ne doit donc pas être présenté comme un contrôle d'identité.
 
 \section{Limites d'usage}
 
@@ -279,7 +307,7 @@ Le téléphone filme correctement lorsque la page est ouverte sur le téléphone
 
 Le projet répond à la question posée au chapitre d'introduction par une chaîne dont chaque étape a un rôle vérifiable. Le fond est une moyenne glissante, le masque vient d'un seuil, les objets viennent des contours, la zone filtre ces objets, et la persistance empêche une image isolée de devenir une alerte. Le sabotage de la caméra est décidé par d'autres mesures que l'aire d'un contour, parce qu'il ne s'agit pas du même phénomène. La cascade de Haar n'ajoute un visage que là où le mouvement a déjà désigné une région.
 
-L'application web transforme cette chaîne en un outil. L'utilisateur voit les images intermédiaires, dessine les zones, et retrouve ensuite les photographies de son compte. La conception sépare le traitement, la session et le stockage, ce que les diagrammes de classes, de séquence et de déploiement rendent explicite.
+L'application web transforme cette chaîne en un outil. L'utilisateur voit les images intermédiaires, dessine les zones, et retrouve ensuite les photographies de son compte. Elle est publiée à l'adresse \url{https://cctv-6n8v.onrender.com/}. Le code source se trouve à l'adresse \url{https://github.com/Tardigrade-droid/projet-digital-image-processing}. La conception sépare le traitement, la session et le stockage, ce que les diagrammes de classes, de séquence et de déploiement rendent explicite.
 
 La suite utile ne consiste pas à remplacer la moyenne glissante par un modèle opaque. Elle consiste à mesurer les seuils de sabotage sur des séquences plus longues, filmées dans le lieu réel, et à montrer à l'opérateur le voisinage qui a fait accepter un visage, afin qu'il puisse juger l'alerte plutôt que la subir.
 
